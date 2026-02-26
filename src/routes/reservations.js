@@ -1,40 +1,42 @@
 const express = require("express");
 const Reservation = require("../models/Reservation");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
-// Create reservation (mobile user)
-router.post("/", async (req, res) => {
+// Create reservation (mobile)
+router.post("/", auth, async (req, res) => {
   try {
-    const reservation = await Reservation.create(req.body);
+    const reservation = await Reservation.create({
+      ...req.body,
+      userId: req.user.id
+    });
     res.json(reservation);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (e) {
+    res.status(400).json({ message: "Reservation create failed", error: e.message });
   }
 });
 
-// Get all reservations (admin)
+// Get my reservations (mobile)
+router.get("/mine", auth, async (req, res) => {
+  const data = await Reservation.find({ userId: req.user.id }).sort({ createdAt: -1 });
+  res.json(data);
+});
+
+// Admin list (web admin can use later)
 router.get("/", async (req, res) => {
-  try {
-    const reservations = await Reservation.find();
-    res.json(reservations);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const data = await Reservation.find().sort({ createdAt: -1 });
+  res.json(data);
 });
 
-// Update reservation status (approve/reject)
+// Admin approve/reject
 router.patch("/:id", async (req, res) => {
-  try {
-    const updated = await Reservation.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const updated = await Reservation.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true }
+  );
+  res.json(updated);
 });
 
 module.exports = router;
