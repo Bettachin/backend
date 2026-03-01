@@ -4,7 +4,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "seed:admin": "node src/seedMainAdmin.js"
+    "seed:admin": "node src/seedMainAdmin.js",
+    "seed:boats": "node src/seedBoats.js"
   },
   "dependencies": {
     "axios": "^1.13.3",

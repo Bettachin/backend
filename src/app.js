@@ -17,5 +17,5 @@ app.use("/api/device", require("./routes/device")); // ✅ ST-901L HTTP ingest r
 app.use("/api/simulate", require("./routes/simulator"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/admin/users", require("./routes/adminUsers"));
-
+app.use("/api/admin/boats", require("./routes/adminBoats"));
 module.exports = app;
