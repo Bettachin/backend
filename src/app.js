@@ -16,5 +16,6 @@ app.use("/api/gps", require("./routes/gps"));
 app.use("/api/device", require("./routes/device")); // ✅ ST-901L HTTP ingest route
 app.use("/api/simulate", require("./routes/simulator"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/admin/users", require("./routes/adminUsers"));
 
 module.exports = app;
