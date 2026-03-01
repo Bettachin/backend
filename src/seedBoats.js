@@ -15,7 +15,7 @@ async function seed() {
     );
   }
 
-  console.log("✅ Boats seeded:", names.join(", "));
+  console.log("✅ Seeded boats:", names.join(", "));
   process.exit(0);
 }
 
