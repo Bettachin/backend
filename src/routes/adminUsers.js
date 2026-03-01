@@ -10,7 +10,7 @@ const router = express.Router();
   Only MAIN ADMIN can access
 */
 router.get("/", auth, requireRole("main_admin"), async (req, res) => {
-  const users = await User.find().select("_id username role createdAt");
+  const users = await User.find().select("_id email role createdAt");
   res.json(users);
 });
 
