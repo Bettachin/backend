@@ -19,5 +19,7 @@ app.use("/api/admin/boats", require("./routes/adminBoats"));
 app.use("/api/gps", require("./routes/gps"));
 app.use("/api/device", require("./routes/device"));
 app.use("/api/simulate", require("./routes/simulator"));
+app.use("/api/sos", require("./routes/sos"));
+app.use("/api/admin/sos", require("./routes/adminSOS"));
 
 module.exports = app;
