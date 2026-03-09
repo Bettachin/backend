@@ -13,6 +13,7 @@ const router = express.Router();
 router.post("/receive", async (req, res) => {
   try {
     const { boatId, lat, lng } = req.body;
+
     if (!boatId || lat == null || lng == null) {
       return res.status(400).json({ message: "boatId, lat, lng are required" });
     }
@@ -21,10 +22,15 @@ router.post("/receive", async (req, res) => {
 
     const log = await GPSLog.create({
       boatId,
-      rawLat: Number(lat),
-      rawLng: Number(lng),
-      filteredLat: filtered.lat,
-      filteredLng: filtered.lng,
+      raw: {
+        lat: Number(lat),
+        lng: Number(lng),
+      },
+      filtered: {
+        lat: filtered.lat,
+        lng: filtered.lng,
+      },
+      timestamp: new Date(),
     });
 
     res.json({ message: "GPS received", log });
@@ -34,32 +40,31 @@ router.post("/receive", async (req, res) => {
 });
 
 /**
- * Mobile app reads latest filtered GPS
+ * Mobile/Admin reads latest GPS
  * GET /api/gps/latest?boatId=xxxx
  */
 router.get("/latest", async (req, res) => {
   try {
     const { boatId } = req.query;
-    const query = boatId ? { boatId } : {};
 
-    const latest = await GPSLog.findOne(query).sort({ createdAt: -1 });
-    if (!latest) return res.status(404).json({ message: "No GPS logs yet" });
-
-    let boatName = "Unknown";
-    let status = "On Trip";
-
-    if (boatId) {
-      const boat = await Boat.findById(boatId);
-      if (boat) boatName = boat.name;
+    if (!boatId) {
+      return res.status(400).json({ message: "boatId is required" });
     }
 
+    const latest = await GPSLog.findOne({ boatId }).sort({ timestamp: -1 });
+    if (!latest) {
+      return res.status(404).json({ message: "No GPS logs yet for this boat" });
+    }
+
+    const boat = await Boat.findById(boatId);
+
     res.json({
-      lat: latest.filteredLat,
-      lng: latest.filteredLng,
       boatId: latest.boatId,
-      boatName,
-      status,
-      timestamp: latest.createdAt,
+      boatName: boat?.name || "Unknown",
+      status: "On Trip",
+      raw: latest.raw || null,
+      filtered: latest.filtered || null,
+      timestamp: latest.timestamp || latest.createdAt,
     });
   } catch (e) {
     res.status(500).json({ message: "GPS latest failed", error: e.message });
