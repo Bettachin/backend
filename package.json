@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node src/server.js",
     "seed:admin": "node src/seedMainAdmin.js",
-    "seed:boats": "node src/seedBoats.js"
+    "seed:boats": "node src/seedBoats.js",
+    "seed:gps": "node src/seedGpsLogs.js"
   },
   "dependencies": {
     "axios": "^1.13.3",
