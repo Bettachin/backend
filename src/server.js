@@ -1,7 +1,6 @@
 require("dotenv").config();
 const app = require("./app");
 const connectDB = require("./config/db");
-const { startH02Server } = require("./tcp/h02Server");
 
 async function start() {
   try {
@@ -13,14 +12,7 @@ async function start() {
       console.log("HTTP API running on", PORT);
     });
 
-    // Disable TCP on Railway unless explicitly enabled
-    if (process.env.ENABLE_TCP_TRACKER === "true") {
-      const TCP_PORT = Number(process.env.TRACKER_TCP_PORT || 9000);
-      startH02Server({ host: "0.0.0.0", port: TCP_PORT });
-      console.log("[TCP] H02 server listening on port", TCP_PORT);
-    } else {
-      console.log("[TCP] Disabled");
-    }
+    console.log("[TCP] Disabled");
   } catch (err) {
     console.error("Startup failed:", err);
     process.exit(1);
