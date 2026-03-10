@@ -6,20 +6,13 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  // add your deployed frontend here later:
-  // "https://your-admin-dashboard.vercel.app",
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // allow requests without origin (Postman, mobile app, server-to-server)
     if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, true); // fastest fix for demo
   },
   credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
@@ -27,17 +20,18 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
-// handle preflight requests explicitly
 app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// optional: request logger for debugging
 app.use((req, _res, next) => {
   console.log(`${req.method} ${req.originalUrl}`);
   next();
+});
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({ ok: true });
 });
 
 app.use("/api/users", require("./routes/users"));
