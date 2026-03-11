@@ -45,7 +45,7 @@ app.use("/api/boats", require("./routes/boats"));
 app.use("/api/reservations", require("./routes/reservations"));
 
 app.use("/api/admin", require("./routes/adminAuth"));
-app.use("/api/admin", require("./routes/admin"));
+// app.use("/api/admin", require("./routes/admin"));
 app.use("/api/admin/users", require("./routes/adminUsers"));
 app.use("/api/admin/boats", require("./routes/adminBoats"));
 
