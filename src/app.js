@@ -3,7 +3,6 @@ const cors = require("cors");
 
 const app = express();
 
-// safest demo CORS setup
 app.use((req, res, next) => {
   const origin = req.headers.origin || "*";
   res.header("Access-Control-Allow-Origin", origin);
