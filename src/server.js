@@ -11,8 +11,6 @@ async function start() {
     app.listen(PORT, "0.0.0.0", () => {
       console.log("HTTP API running on", PORT);
     });
-
-    console.log("[TCP] Disabled");
   } catch (err) {
     console.error("Startup failed:", err);
     process.exit(1);
