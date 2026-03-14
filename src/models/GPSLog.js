@@ -18,6 +18,9 @@ const GPSLogSchema = new mongoose.Schema(
     filteredLat: Number,
     filteredLng: Number,
 
+    lat: Number,
+    lng: Number,
+
     timestamp: { type: Date, default: Date.now },
   },
   { timestamps: true }
