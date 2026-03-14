@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const GPSLog = require("../models/GPSLog");
 const Boat = require("../models/Boat");
 const kalman = require("../utils/kalman");
@@ -8,7 +9,6 @@ const router = express.Router();
 /**
  * Device/Simulator sends GPS here
  * POST /api/gps/receive
- * body: { boatId, lat, lng }
  */
 router.post("/receive", async (req, res) => {
   try {
@@ -35,6 +35,7 @@ router.post("/receive", async (req, res) => {
 
     res.json({ message: "GPS received", log });
   } catch (e) {
+    console.error("[GPS/receive] failed:", e);
     res.status(500).json({ message: "GPS receive failed", error: e.message });
   }
 });
@@ -47,24 +48,37 @@ router.get("/latest", async (req, res) => {
   try {
     const { boatId } = req.query;
 
+    console.log("[GPS/latest] incoming boatId:", boatId);
+
     if (!boatId) {
       return res.status(400).json({ message: "boatId is required" });
     }
 
-    // First: try new-format logs where GPSLog.boatId = actual Boat._id
-    let latest = await GPSLog.findOne({ boatId }).sort({ timestamp: -1, createdAt: -1 });
+    if (!mongoose.Types.ObjectId.isValid(String(boatId))) {
+      return res.status(400).json({ message: "Invalid boatId format" });
+    }
 
-    // If not found, try old-format logs where GPSLog.boatId = boat.deviceId
-    let boat = await Boat.findById(boatId);
-    if (!latest && boat?.deviceId) {
+    const boat = await Boat.findById(boatId);
+    if (!boat) {
+      return res.status(404).json({ message: "Boat not found" });
+    }
+
+    console.log("[GPS/latest] boat:", boat.name, "deviceId:", boat.deviceId || "(none)");
+
+    // First try new-format logs using real Boat._id
+    let latest = await GPSLog.findOne({ boatId: boat._id }).sort({ timestamp: -1, createdAt: -1 });
+    console.log("[GPS/latest] direct boatId match:", !!latest);
+
+    // Fallback for old-format logs using boat.deviceId
+    if (!latest && boat.deviceId) {
       latest = await GPSLog.findOne({ boatId: boat.deviceId }).sort({ timestamp: -1, createdAt: -1 });
+      console.log("[GPS/latest] fallback deviceId match:", !!latest);
     }
 
     if (!latest) {
       return res.status(404).json({ message: "No GPS logs yet for this boat" });
     }
 
-    // normalize old/new schema
     const raw = latest.raw
       ? latest.raw
       : {
@@ -79,16 +93,29 @@ router.get("/latest", async (req, res) => {
           lng: latest.filteredLng ?? null,
         };
 
-    res.json({
-      boatId,
-      boatName: boat?.name || "Unknown",
+    console.log("[GPS/latest] raw:", raw);
+    console.log("[GPS/latest] filtered:", filtered);
+
+    if (
+      raw?.lat == null ||
+      raw?.lng == null ||
+      filtered?.lat == null ||
+      filtered?.lng == null
+    ) {
+      return res.status(404).json({ message: "GPS log exists but has no coordinates" });
+    }
+
+    return res.json({
+      boatId: String(boat._id),
+      boatName: boat.name,
       status: "On Trip",
       raw,
       filtered,
       timestamp: latest.timestamp || latest.createdAt || null,
     });
   } catch (e) {
-    res.status(500).json({ message: "GPS latest failed", error: e.message });
+    console.error("[GPS/latest] failed:", e);
+    return res.status(500).json({ message: "GPS latest failed", error: e.message });
   }
 });
 

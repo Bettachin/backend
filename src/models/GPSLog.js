@@ -2,15 +2,22 @@ const mongoose = require("mongoose");
 
 const GPSLogSchema = new mongoose.Schema(
   {
-    boatId: { type: mongoose.Schema.Types.ObjectId, ref: "Boat", required: true },
+    boatId: { type: mongoose.Schema.Types.Mixed, required: true },
+
     raw: {
-      lat: { type: Number, required: true },
-      lng: { type: Number, required: true },
+      lat: Number,
+      lng: Number,
     },
     filtered: {
-      lat: { type: Number, required: true },
-      lng: { type: Number, required: true },
+      lat: Number,
+      lng: Number,
     },
+
+    rawLat: Number,
+    rawLng: Number,
+    filteredLat: Number,
+    filteredLng: Number,
+
     timestamp: { type: Date, default: Date.now },
   },
   { timestamps: true }
