@@ -7,7 +7,6 @@ const kalman = require("../utils/kalman");
 const router = express.Router();
 
 /**
- * Device / simulator sends GPS here
  * POST /api/gps/receive
  * body: { boatId, lat, lng }
  */
@@ -42,7 +41,6 @@ router.post("/receive", async (req, res) => {
 });
 
 /**
- * Mobile / admin reads latest GPS
  * GET /api/gps/latest?boatId=xxxx
  */
 router.get("/latest", async (req, res) => {
@@ -71,6 +69,11 @@ router.get("/latest", async (req, res) => {
 
     const latest = await GPSLog.findOne({
       boatId: { $in: candidates },
+      $or: [
+        { "raw.lat": { $ne: null } },
+        { rawLat: { $ne: null } },
+        { lat: { $ne: null } }
+      ]
     }).sort({ timestamp: -1, createdAt: -1, _id: -1 });
 
     console.log("[GPS/latest] match found:", !!latest);
@@ -79,38 +82,40 @@ router.get("/latest", async (req, res) => {
       return res.status(404).json({ message: "No GPS logs yet for this boat" });
     }
 
-    const raw = latest.raw
-      ? latest.raw
-      : latest.rawLat != null || latest.rawLng != null
-      ? {
-          lat: latest.rawLat ?? null,
-          lng: latest.rawLng ?? null,
-        }
-      : latest.lat != null || latest.lng != null
-      ? {
-          lat: latest.lat ?? null,
-          lng: latest.lng ?? null,
-        }
-      : null;
+    const raw =
+      latest.raw && latest.raw.lat != null && latest.raw.lng != null
+        ? latest.raw
+        : latest.rawLat != null || latest.rawLng != null
+        ? {
+            lat: latest.rawLat ?? null,
+            lng: latest.rawLng ?? null,
+          }
+        : latest.lat != null || latest.lng != null
+        ? {
+            lat: latest.lat ?? null,
+            lng: latest.lng ?? null,
+          }
+        : null;
 
-    const filtered = latest.filtered
-      ? latest.filtered
-      : latest.filteredLat != null || latest.filteredLng != null
-      ? {
-          lat: latest.filteredLat ?? null,
-          lng: latest.filteredLng ?? null,
-        }
-      : latest.lat != null || latest.lng != null
-      ? {
-          lat: latest.lat ?? null,
-          lng: latest.lng ?? null,
-        }
-      : null;
+    const filtered =
+      latest.filtered && latest.filtered.lat != null && latest.filtered.lng != null
+        ? latest.filtered
+        : latest.filteredLat != null || latest.filteredLng != null
+        ? {
+            lat: latest.filteredLat ?? null,
+            lng: latest.filteredLng ?? null,
+          }
+        : latest.lat != null || latest.lng != null
+        ? {
+            lat: latest.lat ?? null,
+            lng: latest.lng ?? null,
+          }
+        : raw;
 
     console.log("[GPS/latest] raw:", raw);
     console.log("[GPS/latest] filtered:", filtered);
 
-    if (raw?.lat == null || raw?.lng == null) {
+    if (!raw?.lat || !raw?.lng) {
       return res.status(404).json({ message: "GPS log exists but has no coordinates" });
     }
 
@@ -119,7 +124,7 @@ router.get("/latest", async (req, res) => {
       boatName: boat.name,
       status: "On Trip",
       raw,
-      filtered: filtered || raw,
+      filtered,
       timestamp: latest.timestamp || latest.createdAt || null,
     });
   } catch (e) {
