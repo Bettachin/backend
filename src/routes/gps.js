@@ -51,20 +51,41 @@ router.get("/latest", async (req, res) => {
       return res.status(400).json({ message: "boatId is required" });
     }
 
-    const latest = await GPSLog.findOne({ boatId }).sort({ timestamp: -1 });
+    // First: try new-format logs where GPSLog.boatId = actual Boat._id
+    let latest = await GPSLog.findOne({ boatId }).sort({ timestamp: -1, createdAt: -1 });
+
+    // If not found, try old-format logs where GPSLog.boatId = boat.deviceId
+    let boat = await Boat.findById(boatId);
+    if (!latest && boat?.deviceId) {
+      latest = await GPSLog.findOne({ boatId: boat.deviceId }).sort({ timestamp: -1, createdAt: -1 });
+    }
+
     if (!latest) {
       return res.status(404).json({ message: "No GPS logs yet for this boat" });
     }
 
-    const boat = await Boat.findById(boatId);
+    // normalize old/new schema
+    const raw = latest.raw
+      ? latest.raw
+      : {
+          lat: latest.rawLat ?? null,
+          lng: latest.rawLng ?? null,
+        };
+
+    const filtered = latest.filtered
+      ? latest.filtered
+      : {
+          lat: latest.filteredLat ?? null,
+          lng: latest.filteredLng ?? null,
+        };
 
     res.json({
-      boatId: latest.boatId,
+      boatId,
       boatName: boat?.name || "Unknown",
       status: "On Trip",
-      raw: latest.raw || null,
-      filtered: latest.filtered || null,
-      timestamp: latest.timestamp || latest.createdAt,
+      raw,
+      filtered,
+      timestamp: latest.timestamp || latest.createdAt || null,
     });
   } catch (e) {
     res.status(500).json({ message: "GPS latest failed", error: e.message });

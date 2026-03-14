@@ -5,17 +5,41 @@ const Boat = require("./models/Boat");
 async function seed() {
   await connectDB();
 
-  const names = ["Kalayaan", "GEF", "Zoox", "Dorado"];
+  const boats = [
+    {
+      name: "Kalayaan",
+      deviceId: "111111111111111"
+    },
+    {
+      name: "GEF",
+      deviceId: "222222222222222"
+    },
+    {
+      name: "Zoox",
+      deviceId: "333333333333333"
+    },
+    {
+      name: "Dorado",
+      deviceId: "444444444444444"
+    }
+  ];
 
-  for (const name of names) {
+  for (const boat of boats) {
     await Boat.updateOne(
-      { name },
-      { $setOnInsert: { name, status: "available", maxPassengers: 4 } },
+      { name: boat.name },
+      {
+        $setOnInsert: {
+          name: boat.name,
+          deviceId: boat.deviceId,
+          status: "available",
+          maxPassengers: 4
+        }
+      },
       { upsert: true }
     );
   }
 
-  console.log("✅ Seeded boats:", names.join(", "));
+  console.log("✅ Boats seeded successfully");
   process.exit(0);
 }
 

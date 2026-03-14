@@ -5,6 +5,7 @@ const BoatSchema = new mongoose.Schema(
     name: { type: String, unique: true, required: true },
     status: { type: String, enum: ["available", "unavailable"], default: "available" },
     maxPassengers: { type: Number, default: 4 },
+    deviceId: { type: String, default: "" } // GPS IMEI / terminal number
   },
   { timestamps: true }
 );
