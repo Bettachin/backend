@@ -54,6 +54,8 @@ app.use("/api/device", require("./routes/device"));
 app.use("/api/simulate", require("./routes/simulator"));
 app.use("/api/sos", require("./routes/sos"));
 app.use("/api/admin/sos", require("./routes/adminSOS"));
+app.use("/api/sms-tracker", require("./routes/smsTracker"));
+app.use("/api/admin/trips", require("./routes/adminTrips"));
 
 app.use((err, req, res, next) => {
   console.error("App error:", err);
