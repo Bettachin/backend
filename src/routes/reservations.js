@@ -7,8 +7,9 @@ const syncTrips = require("../utils/tripSync");
 const router = express.Router();
 
 const toMinutes = (t) => {
+  if (!t || typeof t !== "string" || !t.includes(":")) return 0;
   const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
+  return (h || 0) * 60 + (m || 0);
 };
 
 function isOverlap(aStart, aEnd, bStart, bEnd) {
@@ -20,191 +21,233 @@ const isAdminRole = (role) =>
 
 // conflict check
 router.post("/check", auth, async (req, res) => {
-  const { boatId, date, startTime, endTime } = req.body;
+  try {
+    const { boatId, date, startTime, endTime } = req.body;
 
-  if (!boatId || !date || !startTime || !endTime) {
-    return res.status(400).json({ message: "Missing fields" });
-  }
+    if (!boatId || !date || !startTime || !endTime) {
+      return res.status(400).json({ message: "Missing fields" });
+    }
 
-  if (toMinutes(endTime) <= toMinutes(startTime)) {
-    return res.json({ conflict: false });
-  }
+    if (toMinutes(endTime) <= toMinutes(startTime)) {
+      return res.json({ conflict: false });
+    }
 
-  const existing = await Reservation.find({
-    boatId,
-    date,
-    status: { $ne: "rejected" },
-  });
-
-  const s = toMinutes(startTime);
-  const e = toMinutes(endTime);
-
-  const conflictWith = existing.find((r) => {
-    const rs = toMinutes(r.startTime);
-    const re = toMinutes(r.endTime);
-    return isOverlap(s, e, rs, re);
-  });
-
-  if (conflictWith) {
-    return res.json({
-      conflict: true,
-      conflictWith: {
-        startTime: conflictWith.startTime,
-        endTime: conflictWith.endTime,
-        status: conflictWith.status,
-      },
+    const existing = await Reservation.find({
+      boatId,
+      date,
+      status: { $ne: "rejected" },
     });
-  }
 
-  res.json({ conflict: false });
+    const s = toMinutes(startTime);
+    const e = toMinutes(endTime);
+
+    const conflictWith = existing.find((r) => {
+      const rs = toMinutes(r.startTime);
+      const re = toMinutes(r.endTime);
+      return isOverlap(s, e, rs, re);
+    });
+
+    if (conflictWith) {
+      return res.json({
+        conflict: true,
+        conflictWith: {
+          startTime: conflictWith.startTime,
+          endTime: conflictWith.endTime,
+          status: conflictWith.status,
+        },
+      });
+    }
+
+    res.json({ conflict: false });
+  } catch (e) {
+    console.error("[RESERVATIONS/check] failed:", e);
+    res.status(500).json({ message: "Failed to check reservation conflict", error: e.message });
+  }
 });
 
 // create reservation
 router.post("/", auth, async (req, res) => {
-  const { boatId, date, startTime, endTime, passengers } = req.body;
+  try {
+    const { boatId, date, startTime, endTime, passengers } = req.body;
 
-  if (!boatId || !date || !startTime || !endTime || !passengers) {
-    return res.status(400).json({ message: "Missing fields" });
-  }
+    if (!boatId || !date || !startTime || !endTime || !passengers) {
+      return res.status(400).json({ message: "Missing fields" });
+    }
 
-  if (toMinutes(endTime) <= toMinutes(startTime)) {
-    return res.status(400).json({ message: "End time must be later than start time" });
-  }
+    if (toMinutes(endTime) <= toMinutes(startTime)) {
+      return res.status(400).json({ message: "End time must be later than start time" });
+    }
 
-  const boat = await Boat.findById(boatId);
-  if (!boat) return res.status(404).json({ message: "Boat not found" });
+    const boat = await Boat.findById(boatId);
+    if (!boat) return res.status(404).json({ message: "Boat not found" });
 
-  if (boat.status !== "available") {
-    return res.status(400).json({ message: "Boat is not available" });
-  }
+    if (boat.status !== "available") {
+      return res.status(400).json({ message: "Boat is not available" });
+    }
 
-  const limit = boat.maxPassengers || 4;
-  if (passengers > limit) {
-    return res.status(400).json({ message: `Max passengers is ${limit}` });
-  }
+    const limit = boat.maxPassengers || 4;
+    if (passengers > limit) {
+      return res.status(400).json({ message: `Max passengers is ${limit}` });
+    }
 
-  const existing = await Reservation.find({
-    boatId,
-    date,
-    status: { $ne: "rejected" },
-  });
-
-  const s = toMinutes(startTime);
-  const e = toMinutes(endTime);
-
-  const conflictWith = existing.find((r) => {
-    const rs = toMinutes(r.startTime);
-    const re = toMinutes(r.endTime);
-    return isOverlap(s, e, rs, re);
-  });
-
-  if (conflictWith) {
-    return res.status(409).json({
-      message: "Schedule conflict",
-      conflictWith: {
-        startTime: conflictWith.startTime,
-        endTime: conflictWith.endTime,
-        status: conflictWith.status,
-      },
+    const existing = await Reservation.find({
+      boatId,
+      date,
+      status: { $ne: "rejected" },
     });
+
+    const s = toMinutes(startTime);
+    const e = toMinutes(endTime);
+
+    const conflictWith = existing.find((r) => {
+      const rs = toMinutes(r.startTime);
+      const re = toMinutes(r.endTime);
+      return isOverlap(s, e, rs, re);
+    });
+
+    if (conflictWith) {
+      return res.status(409).json({
+        message: "Schedule conflict",
+        conflictWith: {
+          startTime: conflictWith.startTime,
+          endTime: conflictWith.endTime,
+          status: conflictWith.status,
+        },
+      });
+    }
+
+    const created = await Reservation.create({
+      userId: req.user.id,
+      boatId,
+      date,
+      startTime,
+      endTime,
+      passengers,
+      status: "pending",
+      rejectNote: "",
+    });
+
+    res.json(created);
+  } catch (e) {
+    console.error("[RESERVATIONS/create] failed:", e);
+    res.status(500).json({ message: "Failed to create reservation", error: e.message });
   }
-
-  const created = await Reservation.create({
-    userId: req.user.id,
-    boatId,
-    date,
-    startTime,
-    endTime,
-    passengers,
-    status: "pending",
-    rejectNote: "",
-  });
-
-  res.json(created);
 });
 
 // list reservations
 router.get("/", auth, async (req, res) => {
-  await syncTrips();
+  try {
+    // ✅ don't let syncTrips crash reservations page
+    try {
+      await syncTrips();
+    } catch (syncErr) {
+      console.error("[RESERVATIONS/list] syncTrips failed:", syncErr);
+    }
 
-  const isAdmin = isAdminRole(req.user.role);
-  const filter = isAdmin ? {} : { userId: req.user.id };
+    const isAdmin = isAdminRole(req.user.role);
+    const filter = isAdmin ? {} : { userId: req.user.id };
 
-  const list = await Reservation.find(filter)
-    .populate("boatId", "name")
-    .sort({ createdAt: -1 });
+    const list = await Reservation.find(filter)
+      .populate("boatId", "name")
+      .sort({ createdAt: -1 });
 
-  res.json(
-    list.map((r) => ({
-      _id: r._id,
-      date: r.date,
-      startTime: r.startTime,
-      endTime: r.endTime,
-      passengers: r.passengers,
-      status: r.status,
-      rejectNote: r.rejectNote || "",
-      boat: r.boatId ? { id: r.boatId._id, name: r.boatId.name } : null,
-      createdAt: r.createdAt,
-    }))
-  );
+    res.json(
+      list.map((r) => ({
+        _id: r._id,
+        date: r.date || "",
+        startTime: r.startTime || "",
+        endTime: r.endTime || "",
+        passengers: typeof r.passengers === "number" ? r.passengers : 0,
+        status: r.status || "pending",
+        rejectNote: r.rejectNote || "",
+        boat: r.boatId
+          ? {
+              id: r.boatId._id || null,
+              name: r.boatId.name || "Unknown Boat",
+            }
+          : null,
+        createdAt: r.createdAt || null,
+      }))
+    );
+  } catch (e) {
+    console.error("[RESERVATIONS/list] failed:", e);
+    res.status(500).json({ message: "Failed to load reservations", error: e.message });
+  }
 });
 
 // approve / reject
 router.patch("/:id", auth, async (req, res) => {
-  if (!isAdminRole(req.user.role)) {
-    return res.status(403).json({ message: "Forbidden" });
+  try {
+    if (!isAdminRole(req.user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const { status, rejectNote } = req.body;
+
+    if (!["pending", "approved", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const update = {
+      status,
+      rejectNote: status === "rejected" ? (rejectNote || "") : "",
+    };
+
+    const updated = await Reservation.findByIdAndUpdate(
+      req.params.id,
+      update,
+      { new: true }
+    ).populate("boatId", "name");
+
+    if (!updated) {
+      return res.status(404).json({ message: "Reservation not found" });
+    }
+
+    res.json({
+      _id: updated._id,
+      date: updated.date || "",
+      startTime: updated.startTime || "",
+      endTime: updated.endTime || "",
+      passengers: typeof updated.passengers === "number" ? updated.passengers : 0,
+      status: updated.status || "pending",
+      rejectNote: updated.rejectNote || "",
+      boat: updated.boatId
+        ? {
+            id: updated.boatId._id || null,
+            name: updated.boatId.name || "Unknown Boat",
+          }
+        : null,
+      createdAt: updated.createdAt || null,
+    });
+  } catch (e) {
+    console.error("[RESERVATIONS/update] failed:", e);
+    res.status(500).json({ message: "Failed to update reservation", error: e.message });
   }
-
-  const { status, rejectNote } = req.body;
-
-  if (!["pending", "approved", "rejected"].includes(status)) {
-    return res.status(400).json({ message: "Invalid status" });
-  }
-
-  const update = {
-    status,
-    rejectNote: status === "rejected" ? (rejectNote || "") : "",
-  };
-
-  const updated = await Reservation.findByIdAndUpdate(
-    req.params.id,
-    update,
-    { new: true }
-  ).populate("boatId", "name");
-
-  if (!updated) return res.status(404).json({ message: "Reservation not found" });
-
-  res.json({
-    _id: updated._id,
-    date: updated.date,
-    startTime: updated.startTime,
-    endTime: updated.endTime,
-    passengers: updated.passengers,
-    status: updated.status,
-    rejectNote: updated.rejectNote || "",
-    boat: updated.boatId ? { id: updated.boatId._id, name: updated.boatId.name } : null,
-    createdAt: updated.createdAt,
-  });
 });
 
 // delete rejected reservation only
 router.delete("/:id", auth, async (req, res) => {
-  if (!isAdminRole(req.user.role)) {
-    return res.status(403).json({ message: "Forbidden" });
+  try {
+    if (!isAdminRole(req.user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const reservation = await Reservation.findById(req.params.id);
+    if (!reservation) {
+      return res.status(404).json({ message: "Reservation not found" });
+    }
+
+    if (reservation.status !== "rejected") {
+      return res.status(400).json({ message: "Only rejected reservations can be deleted" });
+    }
+
+    await Reservation.findByIdAndDelete(req.params.id);
+
+    res.json({ message: "Rejected reservation deleted successfully" });
+  } catch (e) {
+    console.error("[RESERVATIONS/delete] failed:", e);
+    res.status(500).json({ message: "Failed to delete reservation", error: e.message });
   }
-
-  const reservation = await Reservation.findById(req.params.id);
-  if (!reservation) {
-    return res.status(404).json({ message: "Reservation not found" });
-  }
-
-  if (reservation.status !== "rejected") {
-    return res.status(400).json({ message: "Only rejected reservations can be deleted" });
-  }
-
-  await Reservation.findByIdAndDelete(req.params.id);
-
-  res.json({ message: "Rejected reservation deleted successfully" });
 });
 
 module.exports = router;
