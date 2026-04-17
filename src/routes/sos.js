@@ -62,4 +62,43 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
+/**
+ * 📊 GET ALL SOS (ADMIN DASHBOARD)
+ */
+router.get("/", async (req, res) => {
+  try {
+    const sosList = await SOS.find()
+      .populate("userId", "name email")
+      .populate("boatId", "name")
+      .sort({ createdAt: -1 });
+
+    const formatted = sosList.map((s) => ({
+      _id: s._id,
+      status: s.status,
+      message: s.message,
+      createdAt: s.createdAt,
+
+      user: s.userId
+        ? {
+            id: s.userId._id,
+            name: s.userId.name,
+            email: s.userId.email,
+          }
+        : null,
+
+      boat: s.boatId
+        ? {
+            id: s.boatId._id,
+            name: s.boatId.name,
+          }
+        : null,
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error("GET SOS error:", err);
+    res.status(500).json({ message: "Failed to fetch SOS" });
+  }
+});
+
 module.exports = router;

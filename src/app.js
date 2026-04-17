@@ -63,6 +63,9 @@ app.use("/api/admin/boats", require("./routes/adminBoats"));
 app.use("/api/sos", require("./routes/sos"));
 const sosRoutes = require("./routes/sosRoutes");
 app.use("/api/sos", sosRoutes);
+
+app.use("/api/admin/sos", require("./routes/adminSOS"));
+
 // Additional routes
 app.use("/api/gps", require("./routes/gps"));
 app.use("/api/device", require("./routes/device"));
