@@ -60,7 +60,7 @@ app.use("/api/admin", require("./routes/adminAuth"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/admin/users", require("./routes/adminUsers"));
 app.use("/api/admin/boats", require("./routes/adminBoats"));
-
+app.use("/api/sos", require("./routes/sos"));
 const sosRoutes = require("./routes/sosRoutes");
 app.use("/api/sos", sosRoutes);
 // Additional routes
