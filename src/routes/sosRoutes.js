@@ -1,17 +1,17 @@
-import express from "express";
-import SOS from "../models/SOS.js";
-import TripLog from "../models/TripLog.js";
-import Boat from "../models/Boat.js";
-import authMiddleware from "../middleware/authMiddleware.js";
+const express = require("express");
+const SOS = require("../models/SOS");
+const TripLog = require("../models/TripLog");
+const Boat = require("../models/Boat");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
-// 🚨 POST /sos
-router.post("/", authMiddleware, async (req, res) => {
+// 🚨 POST /api/sos
+router.post("/", auth, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // 1. Find ACTIVE trip for this user
+    // 1. Find ACTIVE trip for user
     const activeTrip = await TripLog.findOne({
       userId,
       status: "active",
@@ -23,7 +23,7 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    // 2. OPTIONAL: check if SOS already exists for this trip
+    // 2. Prevent duplicate SOS
     const existingSOS = await SOS.findOne({
       tripLogId: activeTrip._id,
       status: "active",
@@ -35,7 +35,7 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    // 3. Validate boat (optional but good)
+    // 3. Validate boat exists
     const boat = await Boat.findById(activeTrip.boatId);
 
     if (!boat) {
@@ -44,17 +44,18 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    // 4. Create SOS
+    // 4. IMPORTANT RULE YOU REQUESTED:
+    // ONLY CHECK IF USER HAS ACTIVE TRIP
+    // (we do NOT use lat/lng)
+
     const sos = await SOS.create({
       userId,
       boatId: activeTrip.boatId,
       tripLogId: activeTrip._id,
+      status: "active",
     });
 
-    // 🚨 FUTURE: emit socket here
-    // io.emit("new_sos", sos);
-
-    res.json({
+    return res.json({
       message: "SOS sent successfully",
       sos,
     });
@@ -66,4 +67,4 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

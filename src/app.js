@@ -31,9 +31,6 @@ const corsOptions = {
   optionsSuccessStatus: 204,                                       // Status code for successful OPTIONS requests
 };
 
-import sosRoutes from "./routes/sosRoutes.js";
-
-app.use("/sos", sosRoutes);
 // Apply CORS middleware
 app.use(cors(corsOptions));
 
@@ -64,12 +61,12 @@ app.use("/api/admin", require("./routes/admin"));
 app.use("/api/admin/users", require("./routes/adminUsers"));
 app.use("/api/admin/boats", require("./routes/adminBoats"));
 
+const sosRoutes = require("./routes/sosRoutes");
+app.use("/api/sos", sosRoutes);
 // Additional routes
 app.use("/api/gps", require("./routes/gps"));
 app.use("/api/device", require("./routes/device"));
 app.use("/api/simulate", require("./routes/simulator"));
-app.use("/api/sos", require("./routes/sos"));
-app.use("/api/admin/sos", require("./routes/adminSOS"));
 app.use("/api/sms-tracker", require("./routes/smsTracker"));
 app.use("/api/admin/trips", require("./routes/adminTrips"));
 
