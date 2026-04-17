@@ -1,21 +1,29 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-const SOSSchema = new mongoose.Schema(
+const sosSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    boatId: { type: mongoose.Schema.Types.ObjectId, ref: "Boat", required: true },
-
-    message: { type: String, default: "" },
-
-    // Optional last known location
-    raw: { lat: Number, lng: Number },
-    filtered: { lat: Number, lng: Number },
-
-    status: { type: String, enum: ["active", "resolved"], default: "active" },
-    resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
-    resolvedAt: { type: Date },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    boatId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Boat",
+      required: true,
+    },
+    tripLogId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TripLog",
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["active", "resolved"],
+      default: "active",
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("SOS", SOSSchema);
+export default mongoose.model("SOS", sosSchema);

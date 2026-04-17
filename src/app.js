@@ -31,6 +31,9 @@ const corsOptions = {
   optionsSuccessStatus: 204,                                       // Status code for successful OPTIONS requests
 };
 
+import sosRoutes from "./routes/sosRoutes.js";
+
+app.use("/sos", sosRoutes);
 // Apply CORS middleware
 app.use(cors(corsOptions));
 
