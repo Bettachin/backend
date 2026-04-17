@@ -101,4 +101,31 @@ router.get("/", async (req, res) => {
   }
 });
 
+/**
+ * ✅ RESOLVE SOS
+ */
+router.patch("/:id/resolve", auth, async (req, res) => {
+  try {
+    const sos = await SOS.findById(req.params.id);
+
+    if (!sos) {
+      return res.status(404).json({ message: "SOS not found" });
+    }
+
+    sos.status = "resolved";
+    sos.resolvedAt = new Date();
+    sos.resolvedBy = req.user.id;
+
+    await sos.save();
+
+    return res.json({
+      message: "SOS resolved successfully",
+      sos,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Failed to resolve SOS" });
+  }
+});
+
 module.exports = router;
