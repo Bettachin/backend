@@ -230,22 +230,37 @@ router.patch("/:id", auth, async (req, res) => {
 // delete rejected reservation only
 router.delete("/:id", auth, async (req, res) => {
   try {
-    if (!isAdminRole(req.user.role)) {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-
     const reservation = await Reservation.findById(req.params.id);
+
     if (!reservation) {
       return res.status(404).json({ message: "Reservation not found" });
     }
 
+    const isAdmin = isAdminRole(req.user.role);
+    const isOwner = reservation.userId.toString() === req.user.id;
+
+    // 👤 USER CAN ONLY DELETE THEIR OWN REJECTED RESERVATIONS
+    if (!isAdmin) {
+      if (!isOwner) {
+        return res.status(403).json({ message: "Not your reservation" });
+      }
+
+      if (reservation.status !== "rejected") {
+        return res.status(400).json({ message: "Only rejected reservations can be deleted" });
+      }
+
+      await Reservation.findByIdAndDelete(req.params.id);
+      return res.json({ message: "Deleted successfully" });
+    }
+
+    // 👑 ADMIN CAN DELETE ANY REJECTED RESERVATION
     if (reservation.status !== "rejected") {
       return res.status(400).json({ message: "Only rejected reservations can be deleted" });
     }
 
     await Reservation.findByIdAndDelete(req.params.id);
 
-    res.json({ message: "Rejected reservation deleted successfully" });
+    res.json({ message: "Deleted successfully" });
   } catch (e) {
     console.error("[RESERVATIONS/delete] failed:", e);
     res.status(500).json({ message: "Failed to delete reservation", error: e.message });
