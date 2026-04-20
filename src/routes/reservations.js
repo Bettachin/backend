@@ -178,47 +178,49 @@ router.get("/", auth, async (req, res) => {
 // approve / reject
 router.patch("/:id", auth, async (req, res) => {
   try {
-    if (!isAdminRole(req.user.role)) {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-
     const { status, rejectNote } = req.body;
 
+    const reservation = await Reservation.findById(req.params.id);
+
+    if (!reservation) {
+      return res.status(404).json({ message: "Reservation not found" });
+    }
+
+    const isAdmin = isAdminRole(req.user.role);
+    const isOwner = reservation.userId.toString() === req.user.id;
+
+    // -----------------------------
+    // 👤 USER ACTION (CANCEL ONLY)
+    // -----------------------------
+    if (!isAdmin) {
+      if (!isOwner) {
+        return res.status(403).json({ message: "Not your reservation" });
+      }
+
+      if (!["pending", "approved"].includes(reservation.status)) {
+        return res.status(400).json({ message: "Cannot cancel this reservation" });
+      }
+
+      reservation.status = "rejected"; // treat as cancelled
+      reservation.rejectNote = "Cancelled by user";
+
+      await reservation.save();
+      return res.json(reservation);
+    }
+
+    // -----------------------------
+    // 👑 ADMIN ACTION (APPROVE / REJECT)
+    // -----------------------------
     if (!["pending", "approved", "rejected"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    const update = {
-      status,
-      rejectNote: status === "rejected" ? (rejectNote || "") : "",
-    };
+    reservation.status = status;
+    reservation.rejectNote = status === "rejected" ? (rejectNote || "") : "";
 
-    const updated = await Reservation.findByIdAndUpdate(
-      req.params.id,
-      update,
-      { new: true }
-    ).populate("boatId", "name");
+    await reservation.save();
 
-    if (!updated) {
-      return res.status(404).json({ message: "Reservation not found" });
-    }
-
-    res.json({
-      _id: updated._id,
-      date: updated.date || "",
-      startTime: updated.startTime || "",
-      endTime: updated.endTime || "",
-      passengers: typeof updated.passengers === "number" ? updated.passengers : 0,
-      status: updated.status || "pending",
-      rejectNote: updated.rejectNote || "",
-      boat: updated.boatId
-        ? {
-            id: updated.boatId._id || null,
-            name: updated.boatId.name || "Unknown Boat",
-          }
-        : null,
-      createdAt: updated.createdAt || null,
-    });
+    res.json(reservation);
   } catch (e) {
     console.error("[RESERVATIONS/update] failed:", e);
     res.status(500).json({ message: "Failed to update reservation", error: e.message });
