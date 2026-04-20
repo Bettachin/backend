@@ -12,9 +12,15 @@ const UserSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ["main_admin", "sub_admin", "researcher"],
+    enum: ["main_admin", "researcher"],
     default: "researcher",
   },
+
+  // ✅ NEW FIELDS
+  isVerified: { type: Boolean, default: false },
+
+  verificationCode: String, // for OTP
+  verificationExpires: Date,
 
   createdAt: { type: Date, default: Date.now },
 });
